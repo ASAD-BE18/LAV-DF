@@ -64,7 +64,7 @@ class Lavdf(Dataset):
             os.mkdir(label_dir)
 
         if metadata is None:
-            metadata: List[Metadata] = read_json(os.path.join(self.root, "metadata.min.json"), lambda x: Metadata(**x))
+            metadata: List[Metadata] = read_json(os.path.join(self.root, "metadata.json"), lambda x: Metadata(**x))
             self.metadata: List[Metadata] = [each for each in metadata if each.split == subset]
 
         else:
@@ -272,7 +272,7 @@ class LavdfDataModule(LightningDataModule):
         self.Dataset = feature_type_to_dataset_type[feature_types]
 
     def setup(self, stage: Optional[str] = None) -> None:
-        self.metadata: List[Metadata] = read_json(os.path.join(self.root, "metadata.min.json"), lambda x: Metadata(**x))
+        self.metadata: List[Metadata] = read_json(os.path.join(self.root, "metadata.json"), lambda x: Metadata(**x))
 
         train_metadata = []
         dev_metadata = []
