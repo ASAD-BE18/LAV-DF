@@ -82,7 +82,12 @@ def resolve_csv_file_name(meta: Metadata, dataset_name: str = "lavdf") -> str:
 def post_process(model_name: str, metadata: List[Metadata], fps=25,
     alpha=0.4, t1=0.2, t2=0.9, dataset_name="lavdf"
 ):
-    with ProcessPoolExecutor(cpu_count() // 2 - 1) as executor:
+    if cpu_count() // 2 - 1 == 0:
+      cpus = 2
+    else:
+      cpus = cpu_count() // 2 - 1
+
+    with ProcessPoolExecutor(cpus) as executor:
         futures = []
         for meta in metadata:
             futures.append(executor.submit(video_post_process, meta, model_name, fps,
