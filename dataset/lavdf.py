@@ -32,7 +32,9 @@ class Metadata:
     video_frames: int
     audio_channels: int
     audio_frames: int
-    timestamps: List[List[str,float,float]]
+    timestamps: Optional[List[List]]
+    transcript: Optional[str]
+
 
 
 T_LABEL = Union[Tensor, Tuple[Tensor, Tensor, Tensor]]
