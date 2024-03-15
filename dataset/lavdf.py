@@ -33,6 +33,11 @@ class Metadata:
     audio_channels: int
     audio_frames: int
 
+    def __init__(self, *args, **kwargs):
+        for name, value in kwargs.items():
+            if hasattr(self, name):
+                setattr(self, name, value)
+
 
 T_LABEL = Union[Tensor, Tuple[Tensor, Tensor, Tensor]]
 
