@@ -131,6 +131,7 @@ def evaluate_lavdf(config, args):
             auc_score = AUC()(metadata, proposals)
             print(f"AUC Score for {modality} modality in {subset_name} set: {auc_score}")
 
+
             print("--------------------------------------------------")
 
 
