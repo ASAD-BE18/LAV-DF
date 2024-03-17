@@ -5,7 +5,7 @@ import torch
 
 from dataset.lavdf import LavdfDataModule
 from inference import inference_batfd
-from metrics import AP, AR
+from metrics import AP, AR, AUC
 from model import Batfd, BatfdPlus
 from post_process import post_process
 from utils import read_json
@@ -122,6 +122,17 @@ def evaluate_lavdf(config, args):
                 print(f"AR@{n_proposals} Score for {modality} modality in {subset_name} set: "
                       f"{ar_score[n_proposals]}")
             print("--------------------------------------------------")
+
+
+            # evaluate AUC
+            auc_score = AUC()(metadata, proposals)
+
+            for file, auc in auc_score.items():
+                print(f"AUC Score for file {file}: {auc}")
+
+            print("--------------------------------------------------")
+
+
 
 if __name__ == '__main__':
     args = parser.parse_args()
