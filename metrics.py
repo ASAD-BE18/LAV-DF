@@ -169,28 +169,79 @@ class AR:
         return values
     
 
-class AUC:
+from torchmetrics import Metric
+
+class AUC(Metric):
     """
-    Area Under the Curve
+    Area Under Curve (AUC) metric for object detection.
 
-    The area under the Receiver Operating Characteristic curve.
+    Args:
+        iou_thresholds: IOU threshold for calculating AUC. Default is 0.5.
+        compute_on_step: Forward only calls update and does not call compute.
+        dist_sync_on_step: Synchronize metric state across distributed environment at each step.
+        process_group: Specify the process group on which synchronization is called.
     """
+    
+    def __init__(
+        self,
+        iou_thresholds: Union[float, List[float]] = 0.5,
+        compute_on_step: bool = True,
+        dist_sync_on_step: bool = False,
+        process_group=None,
+    ):
+        super().__init__(
+            compute_on_step=compute_on_step,
+            dist_sync_on_step=dist_sync_on_step,
+            process_group=process_group,
+        )
+        self.add_state("ious", default=[], dist_reduce_fx=None)
+        self.iou_thresholds = [iou_thresholds] if isinstance(iou_thresholds, float) else iou_thresholds
 
-    def __init__(self, pos_label: int = 1):
-        super().__init__()
-        self.auroc = torchmetrics.AUROC(pos_label=pos_label)
+    def update(self, metadata: List[Metadata], proposals_dict: dict):
+        for iou_threshold in self.iou_thresholds:
+            for meta in metadata:
+                proposals = torch.tensor(proposals_dict[meta.file])
+                labels = torch.tensor(meta.fake_periods)
+                ious = self.get_ious(iou_threshold, proposals, labels, 25.)
+                if ious.numel() > 0:  # Check if tensor is non-empty
+                    self.ious.append(ious)
 
-    def __call__(self, metadata: List[Metadata], proposals_dict: dict) -> float:
+    def compute(self):
+        ious = torch.cat(self.ious, dim=0)
+        return torch.mean(ious)
 
-        auc_scores = []
+    def __call__(self, metadata: List[Metadata], proposals_dict: dict):
+        self.update(metadata, proposals_dict)
+        return self.compute()
 
-        for meta in tqdm(metadata):
-            proposals = torch.tensor(proposals_dict[meta.file])
-            labels = torch.tensor(meta.fake_periods)
-            auc = self.auroc(proposals, labels)
-            auc_scores.append(auc.item())
+    @staticmethod
+    def get_ious(iou_threshold, proposals, labels, fps):
+        n_labels = len(labels)
+        n_proposals = len(proposals)
+        if n_labels > 0:
+            ious = iou_1d(proposals[:, 1:] / fps, labels)
+        else:
+            ious = torch.zeros((n_proposals, 0))
 
-        # Calculate the average AUC
-        avg_auc = sum(auc_scores) / len(auc_scores)
+        n_labels = ious.shape[1]
+        detected = torch.full((n_labels,), False)
+        confidence = proposals[:, 0]
+        potential_TP = ious > iou_threshold
 
-        return avg_auc
+        tp_indexes = []
+
+        for i in range(n_labels):
+            potential_TP_index = potential_TP[:, i].nonzero()
+            for (j,) in potential_TP_index:
+                if j not in tp_indexes:
+                    tp_indexes.append(j)
+                    break
+
+        is_TP = torch.zeros(n_proposals, dtype=torch.bool)
+        if len(tp_indexes) > 0:
+            tp_indexes = torch.stack(tp_indexes)
+            is_TP[tp_indexes] = True
+
+        values = is_TP.float().mean()
+        return values.unsqueeze(0)
+
