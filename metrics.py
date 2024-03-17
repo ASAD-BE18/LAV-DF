@@ -179,14 +179,18 @@ class AUC:
     def __init__(self, pos_label: int = 1):
         super().__init__()
         self.auroc = torchmetrics.AUROC(pos_label=pos_label)
-        self.auc: dict = {}
 
-    def __call__(self, metadata: List[Metadata], proposals_dict: dict) -> dict:
+    def __call__(self, metadata: List[Metadata], proposals_dict: dict) -> float:
+
+        auc_scores = []
 
         for meta in tqdm(metadata):
             proposals = torch.tensor(proposals_dict[meta.file])
             labels = torch.tensor(meta.fake_periods)
             auc = self.auroc(proposals, labels)
-            self.auc[meta.file] = auc.item()
+            auc_scores.append(auc.item())
 
-        return self.auc
+        # Calculate the average AUC
+        avg_auc = sum(auc_scores) / len(auc_scores)
+
+        return avg_auc
