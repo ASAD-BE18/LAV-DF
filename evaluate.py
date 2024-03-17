@@ -127,8 +127,9 @@ def evaluate_lavdf(config, args):
             # evaluate AUC
             auc_score = AUC()(metadata, proposals)
 
-            for file, auc in auc_score.items():
-                print(f"AUC Score for file {file}: {auc}")
+            # evaluate AUC
+            auc_score = AUC()(metadata, proposals)
+            print(f"AUC Score for {modality} modality in {subset_name} set: {auc_score}")
 
             print("--------------------------------------------------")
 
